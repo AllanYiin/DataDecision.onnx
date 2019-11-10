@@ -98,8 +98,6 @@ namespace DataDecision.onnx
 
        public static List<float> ParallelExtractCHW(this Bitmap image, PixelNormalizationMode mode = PixelNormalizationMode.ZeroCentral)
         {
-            // We use local variables to avoid contention on the image object through the multiple threads.
-
             int channelStride = image.Width * image.Height;
             int imageWidth = image.Width;
             int imageHeight = image.Height;
@@ -164,7 +162,6 @@ namespace DataDecision.onnx
 
         public static List<float> ParallelExtractCHW(this Bitmap image)
         {
-            // We use local variables to avoid contention on the image object through the multiple threads.
             int channelStride = image.Width * image.Height;
             int imageWidth = image.Width;
             int imageHeight = image.Height;
@@ -177,11 +174,10 @@ namespace DataDecision.onnx
 
             int stride = bitmapData.Stride;
             int heightstrides = image.Width * 3;
-            // Copy the RGB values into the array.
+            // 將RGB值複製到array
             System.Runtime.InteropServices.Marshal.Copy(ptr, rgbValues, 0, bytes);
 
-            // The mapping depends on the pixel format
-            // The mapPixel lambda will return the right color channel for the desired pixel
+            // 根據pixel format對應像素
             Func<int, int, int,int> mapPixel = GetPixelMapper(image.PixelFormat, stride);
 
 
@@ -205,102 +201,95 @@ namespace DataDecision.onnx
             return features.Select(b => (float)((b - mean) / std)).ToList();
         }
 
-        //public static float[] ParallelExtractHWC(this Bitmap image, PixelNormalizationMode mode = PixelNormalizationMode.ZeroCentral)
-        //{
-        //    // We use local variables to avoid contention on the image object through the multiple threads.
+        public static float[] ParallelExtractHWC(this Bitmap image, PixelNormalizationMode mode = PixelNormalizationMode.ZeroCentral)
+        {
+            int heightStride = image.Width * 3;
+            int imageWidth = image.Width;
+            int imageHeight = image.Height;
+            var features = new float[imageWidth * imageHeight * 3];
 
-        //    int heightStride = image.Width * 3;
-        //    int imageWidth = image.Width;
-        //    int imageHeight = image.Height;
-        //    var features = new float[imageWidth * imageHeight * 3];
+            var bitmapData = image.LockBits(new System.Drawing.Rectangle(0, 0, imageWidth, imageHeight), ImageLockMode.ReadOnly, image.PixelFormat);
+            IntPtr ptr = bitmapData.Scan0;
 
-        //    var bitmapData = image.LockBits(new System.Drawing.Rectangle(0, 0, imageWidth, imageHeight), ImageLockMode.ReadOnly, image.PixelFormat);
-        //    IntPtr ptr = bitmapData.Scan0;
+            int bytes = Math.Abs(bitmapData.Stride) * bitmapData.Height;
 
-        //    int bytes = Math.Abs(bitmapData.Stride) * bitmapData.Height;
+            byte[] rgbValues = new byte[bytes];
+            int stride = bitmapData.Stride;
+            // 將RGB值複製到array
+            System.Runtime.InteropServices.Marshal.Copy(ptr, rgbValues, 0, bytes);
+            // 根據pixel format對應像素
+            Func<int, int, int, int> mapPixel = GetPixelMapper(image.PixelFormat, stride);
+            Parallel.For(0, imageHeight, (int h) =>
+            {
+                Parallel.For(0, imageWidth, (int w) =>
+                {
+                    Parallel.For(0, 3, (int c) =>
+                    {
+                        if (mode == PixelNormalizationMode.ZeroBased)
+                        {
+                            features[heightStride * h + 3 * w + c] = (float)(rgbValues[mapPixel(h, w, c)]) / 255f;
+                        }
+                        else if (mode == PixelNormalizationMode.ZeroCentral)
+                        {
+                            features[heightStride * h + 3 * w + c] = (float)(rgbValues[mapPixel(h, w, c)] - 127.5f) / 127.5f;
+                        }
+                        else
+                        {
+                            features[heightStride * h + 3 * w + c] = (float)(rgbValues[mapPixel(h, w, c)]);
+                        }
+                    });
+                });
+            });
 
-        //    byte[] rgbValues = new byte[bytes];
-        //    int stride = bitmapData.Stride;
-        //    // Copy the RGB values into the array.
-        //    System.Runtime.InteropServices.Marshal.Copy(ptr, rgbValues, 0, bytes);
-        //    // The mapping depends on the pixel format
-
-        //    // The mapPixel lambda will return the right color channel for the desired pixel
-
-        //    Func<int, int, int, int> mapPixel = GetPixelMapper(image.PixelFormat, stride);
-        //    Parallel.For(0, imageHeight, (int h) =>
-        //    {
-        //        Parallel.For(0, imageWidth, (int w) =>
-        //        {
-        //            Parallel.For(0, 3, (int c) =>
-        //            {
-        //                if (mode == PixelNormalizationMode.ZeroBased)
-        //                {
-        //                    features[heightStride * h + 3*w+c] = (float)(rgbValues[mapPixel(h, w, c)]) / 255f;
-        //                }
-        //                else if (mode == PixelNormalizationMode.ZeroCentral)
-        //                {
-        //                    features[heightStride * h + 3 * w + c] = (float)(rgbValues[mapPixel(h, w, c)] - 127.5f) / 127.5f;
-        //                }
-        //                else
-        //                {
-        //                    features[heightStride * h + 3 * w + c] = (float)(rgbValues[mapPixel(h, w, c)]);
-        //                }
-        //            });
-        //        });
-        //    });
-
-        //    image.UnlockBits(bitmapData);
+            image.UnlockBits(bitmapData);
 
 
 
-        //    return features;
+            return features;
 
 
-        //}
+        }
 
-        //public static List<float> ParallelExtractHWC(this Bitmap image)
-        //{
-        //    // We use local variables to avoid contention on the image object through the multiple threads.
-        //    int heightStride = image.Width *3;
-        //    int imageWidth = image.Width;
-        //    int imageHeight = image.Height;
+        public static List<float> ParallelExtractHWC(this Bitmap image)
+        {
+            int heightStride = image.Width * 3;
+            int imageWidth = image.Width;
+            int imageHeight = image.Height;
 
-        //    var features = new byte[imageWidth * imageHeight * 3];
-        //    var bitmapData = image.LockBits(new System.Drawing.Rectangle(0, 0, imageWidth, imageHeight), ImageLockMode.ReadOnly, image.PixelFormat);
-        //    IntPtr ptr = bitmapData.Scan0;
-        //    int bytes = Math.Abs(bitmapData.Stride) * bitmapData.Height;
-        //    byte[] rgbValues = new byte[bytes];
+            var features = new byte[imageWidth * imageHeight * 3];
+            var bitmapData = image.LockBits(new System.Drawing.Rectangle(0, 0, imageWidth, imageHeight), ImageLockMode.ReadOnly, image.PixelFormat);
+            IntPtr ptr = bitmapData.Scan0;
+            int bytes = Math.Abs(bitmapData.Stride) * bitmapData.Height;
+            byte[] rgbValues = new byte[bytes];
 
-        //    int stride = bitmapData.Stride;
-        //    int heightstrides = image.Width * 3;
-        //    // Copy the RGB values into the array.
-        //    System.Runtime.InteropServices.Marshal.Copy(ptr, rgbValues, 0, bytes);
+            int stride = bitmapData.Stride;
+            int heightstrides = image.Width * 3;
+            // 將RGB值複製到array
+            System.Runtime.InteropServices.Marshal.Copy(ptr, rgbValues, 0, bytes);
 
-        //    // The mapping depends on the pixel format
-        //    // The mapPixel lambda will return the right color channel for the desired pixel
-        //    Func<int, int, int, int> mapPixel = GetPixelMapper(image.PixelFormat, stride);
+            // 根據pixel format對應像素
+            Func<int, int, int, int> mapPixel = GetPixelMapper(image.PixelFormat, stride);
 
 
-        //    Parallel.For(0, imageHeight, (int h) =>
-        //    {
-        //        Parallel.For(0, imageWidth, (int w) =>
-        //        {
-        //            Parallel.For(0, 3, (int c) =>
-        //            {
-        //                features[heightStride * h + 3 * w + c] = rgbValues[mapPixel(h, w, c)];
-        //            });
-        //        });
-        //    });
+            Parallel.For(0, imageHeight, (int h) =>
+            {
+                Parallel.For(0, imageWidth, (int w) =>
+                {
+                    Parallel.For(0, 3, (int c) =>
+                    {
+                        features[heightStride * h + 3 * w + c] = rgbValues[mapPixel(h, w, c)];
+                    });
+                });
+            });
 
 
 
-        //    image.UnlockBits(bitmapData);
-        //    //請注意這段有改寫，需要根據平均值標準差調整
-        //    float mean = features.Select(x => (float)x).Average();
-        //    float std = features.Select(x => (float)x).StdDev();
-        //    return features.Select(b => (float)((b - mean) / std)).ToList();
-        //}
+            image.UnlockBits(bitmapData);
+            //請注意這段有改寫，需要根據平均值標準差調整
+            float mean = features.Select(x => (float)x).Average();
+            float std = features.Select(x => (float)x).StdDev();
+            return features.Select(b => (float)((b - mean) / std)).ToList();
+        }
 
 
 
@@ -318,12 +307,13 @@ namespace DataDecision.onnx
         }
 
 
-        /// 获取等比例缩放图片的方法
+        /// 獲取等比例縮放圖片的方法
         /// </summary>
-        /// <param name="imgPath">待缩放图片路径</param>
-        /// <param name="scaling">要保持的宽度或高度</param>
-        /// <param name="keepWidthOrHeight">如果为true则保持宽度为scaling，否则保持高度为scaling</param>
+        /// <param name="imgPath">待縮放圖片路徑</param>
+        /// <param name="scaling">要保持的寬度或高度</param>
+        /// <param name="keepWidthOrHeight">如果爲true則保持寬度爲scaling，否則保持高度爲scaling</param>
         /// <returns></returns>
+
         public static Bitmap GetThumbnail(this Bitmap image, int scalingWith, int scalingHeigth)
         {
             try

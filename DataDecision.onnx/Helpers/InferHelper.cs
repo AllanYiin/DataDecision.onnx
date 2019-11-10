@@ -39,21 +39,12 @@ namespace DataDecision.onnx
         public static IDisposableReadOnlyCollection<DisposableNamedOnnxValue> InferImagenet(Bitmap img)
         {
             var container = new List<NamedOnnxValue>();
-            container.Add(TensorHelpers.BitmapToTensor(img));
+            container.Add(TensorHelper.BitmapCHWToTensor(img, PixelNormalizationMode.imagenet));
             var results = session.Run(container);
             return results;
        
         }
-        //public static IDisposableReadOnlyCollection<DisposableNamedOnnxValue> InferYolo(List<Bitmap> imgs)
-        //{
-        //    var container = new List<NamedOnnxValue>();
-        //    foreach (var img in imgs)
-        //    {
-        //        container.Add(TensorHelpers.BitmapToTensor(img));
-        //    }
-        //    var results = session.Run(container);
-        //    return results;
-        //}
+
 
     }
 }
