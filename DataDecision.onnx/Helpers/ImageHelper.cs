@@ -7,12 +7,13 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using OpenCvSharp.Extensions;
+using NumSharp;
 
 namespace DataDecision.onnx
 {
     public static class ImageHelper
     {
-       private static Func<int, int, int, int> GetPixelMapper(PixelFormat pixelFormat, int heightStride)
+        private static Func<int, int, int, int> GetPixelMapper(PixelFormat pixelFormat, int heightStride)
         {
             switch (pixelFormat)
             {
@@ -42,6 +43,33 @@ namespace DataDecision.onnx
             System.Runtime.InteropServices.Marshal.Copy(ptr, rgbValues, 0, bytes);
             return rgbValues;
         }
+
+        public static float[] Image2Array(this Bitmap image, PixelNormalizationMode mode = PixelNormalizationMode.ZeroCentral)
+        {
+            var arr = image.ToNDArray().astype(NPTypeCode.Double);
+            if (mode == PixelNormalizationMode.ZeroBased)
+            {
+                arr = arr / 255;
+            }
+            else if (mode == PixelNormalizationMode.ZeroCentral)
+            {
+                arr = (arr - 127.5f) / 127.5f;
+            }
+            else if (mode == PixelNormalizationMode.imagenet)
+            {
+                //[0.485, 0.456, 0.406]
+                //[0.229, 0.224, 0.225]
+                NDArray mean = np.expand_dims(np.expand_dims(np.array(new float[] { 0.485f, 0.456f, 0.406f }),0), 0);
+                NDArray std = np.expand_dims(np.expand_dims(np.array(new float[] { 0.229f, 0.224f, 0.225f }), 0), 0);
+
+                arr = (arr /255f- mean) / std;
+            }
+
+            arr = np.transpose(arr,new int[] { 2, 0, 1 });
+
+            return arr.flat.ToArray<float>();
+        }
+
 
         public static Bitmap FloatListToBitmap(List<IList<float>> p, int width, int height, PixelNormalizationMode zeroCentral)
         {
@@ -96,6 +124,7 @@ namespace DataDecision.onnx
 
         }
 
+        [Obsolete]
        public static List<float> ParallelExtractCHW(this Bitmap image, PixelNormalizationMode mode = PixelNormalizationMode.ZeroCentral)
         {
             int channelStride = image.Width * image.Height;
@@ -160,6 +189,7 @@ namespace DataDecision.onnx
 
         }
 
+        [Obsolete]
         public static List<float> ParallelExtractCHW(this Bitmap image)
         {
             int channelStride = image.Width * image.Height;
@@ -201,6 +231,7 @@ namespace DataDecision.onnx
             return features.Select(b => (float)((b - mean) / std)).ToList();
         }
 
+        [Obsolete]
         public static float[] ParallelExtractHWC(this Bitmap image, PixelNormalizationMode mode = PixelNormalizationMode.ZeroCentral)
         {
             int heightStride = image.Width * 3;
@@ -250,6 +281,7 @@ namespace DataDecision.onnx
 
         }
 
+        [Obsolete]
         public static List<float> ParallelExtractHWC(this Bitmap image)
         {
             int heightStride = image.Width * 3;

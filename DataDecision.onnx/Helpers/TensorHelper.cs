@@ -15,7 +15,8 @@ namespace DataDecision.onnx
 
         public static NamedOnnxValue BitmapCHWToTensor(Bitmap img, PixelNormalizationMode pixelmode)
         {
-            float[]data=img.ParallelExtractCHW(pixelmode).ToArray();
+        
+            float[]data = img.Image2Array(PixelNormalizationMode.imagenet);
             var tensor = new Microsoft.ML.OnnxRuntime.Tensors.DenseTensor<float>(data, InferHelper.session.InputMetadata[InferHelper.inputName].Dimensions);
             return NamedOnnxValue.CreateFromTensor<float>(InferHelper.inputName, tensor);
         }
