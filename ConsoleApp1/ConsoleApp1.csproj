@@ -29,7 +29,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
     <PackageReference Include="NumSharp" Version="0.20.4" />
     <PackageReference Include="NumSharp.Bitmap" Version="0.20.4" />
     <PackageReference Include="System.Text.Encoding.CodePages" Version="4.7.0-preview2.19523.17" />
